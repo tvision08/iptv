@@ -1005,7 +1005,7 @@ inquirer()
     }
 
     inquirer:checkbox_input() {
-        inquirer_checkbox_input "$1" "$2"
+        inquirer:_checkbox_input "$1" "$2"
         _checkbox_input_output_var_name=$3
         inquirer:select_indices _checkbox_list _checkbox_selected_indices $_checkbox_input_output_var_name
 
@@ -1890,14 +1890,13 @@ InstallImageMagick()
     trap '
         kill $progress_pid 2> /dev/null
     ' EXIT
-    wget --no-check-certificate "https://imagemagick.org/download/binaries/magick" -qO "$MAGICK_FILE"
-    chmod +x "$MAGICK_FILE"
+    rm -f "$IPTV_ROOT/magick"
     [ -z "${release:-}" ] && CheckRelease lite
     if [ "$release" == "rpm" ] 
     then
-        yum -y install fontconfig freetype freetype-devel fontconfig-devel >/dev/null 2>&1
+        yum -y install ImageMagick >/dev/null 2>&1
     else
-        apt-get -y install fontconfig libfontconfig1 libharfbuzz-dev >/dev/null 2>&1
+        apt-get -y install imagemagick >/dev/null 2>&1
     fi
     kill $progress_pid
     trap - EXIT
@@ -2864,12 +2863,16 @@ HlsStreamCreatorPlus()
 
                 if [ "$encrypt_yn" == "yes" ] || [[ $quality == *","* ]] || { [ -n "${variants:-}" ] && [[ ${#variants[@]} -gt 1 ]]; }
                 then
-                    openssl rand 16 > "$output_dir_root/$key_name.key"
-                    if [ "$encrypt_session_yn" == "yes" ] 
+                    if [ "$encrypt_yn" == "yes" ] 
                     then
-                        echo -e "/keys?key=$key_name&channel=$output_dir_name\n$output_dir_root/$key_name.key\n$(openssl rand -hex 16)" > "$output_dir_root/$keyinfo_name.keyinfo"
-                    else
-                        echo -e "$key_name.key\n$output_dir_root/$key_name.key\n$(openssl rand -hex 16)" > "$output_dir_root/$keyinfo_name.keyinfo"
+                        openssl rand 16 > "$output_dir_root/$key_name.key"
+                        if [ "$encrypt_session_yn" == "yes" ] 
+                        then
+                            echo -e "/keys?key=$key_name&channel=$output_dir_name\n$output_dir_root/$key_name.key\n$(openssl rand -hex 16)" > "$output_dir_root/$keyinfo_name.keyinfo"
+                        else
+                            echo -e "$key_name.key\n$output_dir_root/$key_name.key\n$(openssl rand -hex 16)" > "$output_dir_root/$keyinfo_name.keyinfo"
+                        fi
+                        var_stream_map_command+=( -hls_key_info_file $output_dir_root/$keyinfo_name.keyinfo )
                     fi
 
                     PrepTerm
@@ -2879,7 +2882,7 @@ HlsStreamCreatorPlus()
                     ${variants_command[@]+"${variants_command[@]}"} \
                     -f hls ${var_stream_map_command[@]+"${var_stream_map_command[@]}"} \
                     -hls_time "$seg_length" -hls_list_size $seg_count \
-                    -hls_delete_threshold $seg_count -hls_key_info_file "$output_dir_root/$keyinfo_name.keyinfo" \
+                    -hls_delete_threshold $seg_count \
                     ${hls_flags_command[@]+"${hls_flags_command[@]}"} > "$FFMPEG_LOG_ROOT/$pid.log" 2> "$FFMPEG_LOG_ROOT/$pid.err" &
                     WaitTerm
                 else
@@ -3166,12 +3169,16 @@ HlsStreamCreatorPlus()
 
                 if [ "$chnl_encrypt_yn" == "yes" ] || [[ $chnl_quality == *","* ]] || { [ -n "${chnl_variants:-}" ] && [[ ${#chnl_variants[@]} -gt 1 ]]; }
                 then
-                    openssl rand 16 > "$chnl_output_dir_root/$chnl_key_name.key"
-                    if [ "$chnl_encrypt_session_yn" == "yes" ] 
+                    if [ "$chnl_encrypt_yn" == "yes" ] 
                     then
-                        echo -e "/keys?key=$chnl_key_name&channel=$chnl_output_dir_name\n$chnl_output_dir_root/$chnl_key_name.key\n$(openssl rand -hex 16)" > "$chnl_output_dir_root/$chnl_keyinfo_name.keyinfo"
-                    else
-                        echo -e "$chnl_key_name.key\n$chnl_output_dir_root/$chnl_key_name.key\n$(openssl rand -hex 16)" > "$chnl_output_dir_root/$chnl_keyinfo_name.keyinfo"
+                        openssl rand 16 > "$chnl_output_dir_root/$chnl_key_name.key"
+                        if [ "$chnl_encrypt_session_yn" == "yes" ] 
+                        then
+                            echo -e "/keys?key=$chnl_key_name&channel=$chnl_output_dir_name\n$chnl_output_dir_root/$chnl_key_name.key\n$(openssl rand -hex 16)" > "$chnl_output_dir_root/$chnl_keyinfo_name.keyinfo"
+                        else
+                            echo -e "$chnl_key_name.key\n$chnl_output_dir_root/$chnl_key_name.key\n$(openssl rand -hex 16)" > "$chnl_output_dir_root/$chnl_keyinfo_name.keyinfo"
+                        fi
+                        chnl_var_stream_map_command+=( -hls_key_info_file $chnl_output_dir_root/$chnl_keyinfo_name.keyinfo )
                     fi
 
                     # https://stackoverflow.com/questions/23235651/how-can-i-do-ansi-c-quoting-of-an-existing-bash-variable
@@ -3182,7 +3189,7 @@ HlsStreamCreatorPlus()
                     ${chnl_variants_command[@]+"${chnl_variants_command[@]}"} \
                     -f hls ${chnl_var_stream_map_command[@]+"${chnl_var_stream_map_command[@]}"} \
                     -hls_time "$chnl_seg_length" -hls_list_size $chnl_seg_count \
-                    -hls_delete_threshold $chnl_seg_count -hls_key_info_file "$chnl_output_dir_root/$chnl_keyinfo_name.keyinfo" \
+                    -hls_delete_threshold $chnl_seg_count \
                     ${chnl_hls_flags_command[@]+"${chnl_hls_flags_command[@]}"} > "$FFMPEG_LOG_ROOT/$new_pid.log" 2> "$FFMPEG_LOG_ROOT/$new_pid.err" &
                     WaitTerm
                 else
@@ -7319,21 +7326,20 @@ Login4gtvAcc()
     done
 
     IMG_FILE="$IPTV_ROOT/4gtv.png"
-    MAGICK_FILE="$IPTV_ROOT/magick"
-    rm -f "${IMG_FILE:-notfound}"
-    if [[ ! -x $MAGICK_FILE ]] 
+
+    if [[ ! -x $(command -v convert) ]] 
     then
-        Println "$info 安装 magick"
+        Println "$info 安装 ImageMagick"
         InstallImageMagick
     fi
+
     while true 
     do
         if curl -s -Lm 20 "https://www.4gtv.tv/validatecode?t=$(date +%s%3N)" \
             -H 'authority: www.4gtv.tv' \
             -H "User-Agent: $user_agent" \
-            -H 'referer: https://www.4gtv.tv/channel.html' | $MAGICK_FILE gif:- "$IMG_FILE" 2> /dev/null
+            -H 'referer: https://www.4gtv.tv/channel.html' -o "$IMG_FILE" && /usr/local/bin/imgcat --half-height "$IMG_FILE"
         then
-            /usr/local/bin/imgcat --half-height "$IMG_FILE"
             rm -f "${IMG_FILE:-notfound}"
             Println "$info 输入图片验证码: "
             read -p "(默认: 刷新验证码): " validatecode
@@ -7578,6 +7584,157 @@ Get4gtvAccToken()
             ;;
         esac
     done
+}
+
+_4gtvCron()
+{
+    if [[ ! -x $(command -v openssl) ]] 
+    then
+        InstallOpenssl
+    fi
+
+    _4gtv_acc_email="$(RandStr)_$(printf '%(%s)T')@gmail.com"
+    _4gtv_acc_pass=$(RandStr)
+    IFS=" " read -r result msg < <(curl -s -Lm 10 'https://api2.4gtv.tv/Account/Register' \
+        -H "User-Agent: $user_agent" \
+        -H 'Origin: https://www.4gtv.tv' \
+        -H 'Referer: https://www.4gtv.tv/signup.html' \
+        -d "fnREGISTER_TYPE=1&fsLOGIN_TYPE=&fsLINK_ID=&fsUSER=$_4gtv_acc_email&fsLOGIN_TYPE=&fsLINK_ID=&fsPASSWORD=$_4gtv_acc_pass&fsPASSWORD1=$_4gtv_acc_pass&fnBIRTH_YEAR=$((RANDOM%20+1980))&fsSEX=male" \
+        | $JQ_FILE -r '[.Success,.ErrMessage]|join(" ")'
+    ) || true
+
+    if [ "$result" == "true" ]
+    then
+        if [ ! -s "$SERVICES_FILE" ] 
+        then
+            printf '{"%s":{"%s":[]}}' "4gtv" "accounts" > "$SERVICES_FILE"
+        fi
+        new_acc=$(
+        $JQ_FILE -n --arg email "$_4gtv_acc_email" --arg password "$_4gtv_acc_pass" \
+            '{
+                email: $email,
+                password: $password
+            }'
+        )
+        jq_path='["4gtv","accounts"]'
+        JQ add "$SERVICES_FILE" "[$new_acc]"
+        Println "$info 账号注册成功\n"
+    else
+        Println "$error 账号注册失败, 请重试\n\n$msg\n"
+    fi
+
+    exit 0
+
+    IMG_FILE="$IPTV_ROOT/4gtv.png"
+
+    if [[ ! -x $(command -v convert) ]] 
+    then
+        Println "$info 安装 ImageMagick"
+        InstallImageMagick
+    fi
+
+    for((i=0;i<5;i++));
+    do
+        if curl -s -Lm 20 "https://www.4gtv.tv/validatecode?t=$(date +%s%3N)" \
+            -H 'authority: www.4gtv.tv' \
+            -H "User-Agent: $user_agent" \
+            -H 'referer: https://www.4gtv.tv/channel.html' -o "$IMG_FILE" && /usr/local/bin/imgcat --half-height "$IMG_FILE"
+        then
+            rm -f "${IMG_FILE:-notfound}"
+            Println "$info 输入图片验证码: "
+            read -p "(默认: 刷新验证码): " validatecode
+            [ -z "$validatecode" ] && continue
+        else
+            Println "$info 尝试修复 magick ..."
+            InstallImageMagick
+            rm -f "${IMG_FILE:-notfound}"
+        fi
+
+        Println "$info 登录账号..."
+        IFS="^" read -r result msg token < <(curl -s -Lm 20 'https://api2.4gtv.tv/Account/SignIn' \
+            -H "User-Agent: $user_agent" \
+            -H 'Origin: https://www.4gtv.tv' \
+            -H 'Referer: https://www.4gtv.tv/channel.html' \
+            -d "fsUSER=$_4gtv_acc_email&fsPASSWORD=$_4gtv_acc_pass&fsVALIDATE_CODE=$validatecode" \
+            | $JQ_FILE -r '[.Success,.ErrMessage,.Data]|join("^")'
+        ) || true
+
+        if [ "$result" == "true" ]
+        then
+            break
+        elif [ "$i" -eq 4 ] 
+        then
+            Println "$error 账号登录失败, 请重试\n\n$msg\n"
+            exit 1
+        fi
+    done
+
+    JQ update "$SERVICES_FILE" '(.4gtv.accounts[]|select(.email=="'"$_4gtv_acc_email"'")|.token)="'"$token"'"'
+    Println "$info 账号登录成功"
+    Println "$info 验证账号..."
+    for((i=0;i<3;i++));
+    do
+        random_number=$(od -An -N6 -t u8 < /dev/urandom)
+        random_number=${random_number: -12}
+        fsLINK_ID="$random_number${random_number:0:9}"
+        IFS="^" read -r result < <(curl -s -Lm 20 'https://api2.4gtv.tv/Account/SignIn' \
+            -H "User-Agent: $user_agent" \
+            -H 'Origin: https://www.4gtv.tv' \
+            -H 'Referer: https://www.4gtv.tv/channel_sub.html?channelSet_id=1&asset_id=4gtv-4gtv003&channel_id=1' \
+            -d "fsLOGIN_TYPE=03&fsLINK_ID=$fsLINK_ID&clsIDENTITY_VALIDATE_ARUS%5BfsVALUE%5D=$(UrlencodeUpper $token)" \
+            | $JQ_FILE -r '.Success'
+        ) || true
+
+        if [ "$result" == "true" ] 
+        then
+            break
+        fi
+    done
+    Println "$info 账号验证成功"
+    Println "$info 开启 7 天豪华套餐"
+
+    IFS="^" read -r result msg < <(curl -s -Lm 20 'https://api2.4gtv.tv/Account/AccountPromo' \
+        -H "User-Agent: $user_agent" \
+        -H 'Origin: https://www.4gtv.tv' \
+        -H 'Referer: https://www.4gtv.tv/channel_sub.html?channelSet_id=1&asset_id=4gtv-4gtv003&channel_id=1' \
+        -d "fsVALUE=$(UrlencodeUpper $token)" \
+        | $JQ_FILE -r '[.Success,.ErrMessage]|join("^")'
+    ) || true
+
+    if [ "$result" == "true" ] 
+    then
+        Println "$info 7 天豪华套餐开启成功\n"
+    else
+        Println "$error 开启 7 天豪华套餐发生错误, 请重试\n\n$msg\n"
+    fi
+}
+
+Enable4gtvCron()
+{
+    if crontab -l | grep -q "/usr/local/bin/tv 4g -" 2> /dev/null
+    then
+        Println "$error 定时任务 (每5天注册账号) 已开启 !\n"
+    else
+        crontab -l > "$IPTV_ROOT/cron_tmp" 2> /dev/null || true
+        printf '%s\n' "0 0 */5 * * /usr/local/bin/tv 4g -" >> "$IPTV_ROOT/cron_tmp"
+        crontab "$IPTV_ROOT/cron_tmp" > /dev/null
+        rm -f "$IPTV_ROOT/cron_tmp"
+        Println "$info 定时任务 (每5天注册账号) 开启成功\n"
+    fi
+}
+
+Disable4gtvCron()
+{
+    if crontab -l | grep -q "/usr/local/bin/tv 4g -" 2> /dev/null
+    then
+        crontab -l > "$IPTV_ROOT/cron_tmp" 2> /dev/null || true
+        sed -i "/\/usr\/local\/bin\/tv 4g -/d" "$IPTV_ROOT/cron_tmp"
+        crontab "$IPTV_ROOT/cron_tmp" > /dev/null
+        rm -f "$IPTV_ROOT/cron_tmp"
+        Println "$info 定时任务 (每5天注册账号) 关闭成功\n"
+    else
+        Println "$error 定时任务 (每5天注册账号) 未开启 !\n"
+    fi
 }
 
 Add4gtvLink()
@@ -24296,30 +24453,30 @@ MonitorCloudflareWorkers()
 
                 if [ "$dead_email" -eq 0 ] 
                 then
-                    for((i=0;i<3;i++));
+                    for((i=0;i<20;i++));
                     do
                         if request_count_json=$(python3 \
                             "$CF_WORKERS_FILE" -e "$cf_zone_user_email" -p "$cf_zone_user_pass" -o request_count
                         ) 
                         then
-                            break
+                            IFS=" " read -r success request_count api_token < <($JQ_FILE -r '[.success,.result.totals.requestCount,.api_token]|join(" ")' <<< "$request_count_json")
+
+                            if [ "$success" == "true" ] && [ -n "$request_count" ] 
+                            then
+                                if [ "$request_count" -gt "$cf_workers_monitor_request_counts" ] 
+                                then
+                                    dead_email=1
+                                    emails_dead+=("$cf_zone_user_email")
+                                fi
+                                break
+                            else
+                                MonitorError "request_count_json 1 : $request_count_json"
+                                sleep 30
+                            fi
                         else
                             sleep 10
                         fi
                     done
-
-                    IFS=" " read -r success request_count api_token < <($JQ_FILE -r '[.success,.result.totals.requestCount,.api_token]|join(" ")' <<< "$request_count_json")
-
-                    if [ "$success" == "true" ] && [ -n "$request_count" ] 
-                    then
-                        if [ "$request_count" -gt "$cf_workers_monitor_request_counts" ] 
-                        then
-                            dead_email=1
-                            emails_dead+=("$cf_zone_user_email")
-                        fi
-                    else
-                        MonitorError "request_count_json 1 : $request_count_json"
-                    fi
                 fi
 
                 if [ "$dead_email" -eq 1 ] 
@@ -24336,7 +24493,7 @@ MonitorCloudflareWorkers()
 
                         if [ -z "${cf_users_token[i]}" ] 
                         then
-                            for((index=0;index<3;index++));
+                            for((index=0;index<10;index++));
                             do
                                 if cf_user_token=$(python3 \
                                     "$CF_WORKERS_FILE" -e "${cf_users_email[i]}" -p "${cf_users_pass[i]}" -o api_token
@@ -24344,7 +24501,7 @@ MonitorCloudflareWorkers()
                                 then
                                     break
                                 else
-                                    sleep 10
+                                    sleep 20
                                 fi
                             done
 
@@ -24406,32 +24563,32 @@ MonitorCloudflareWorkers()
                             MonitorCloudflareWorkersUpdateRoutes
                         done
 
-                        for((index=0;index<3;index++));
+                        for((index=0;index<20;index++));
                         do
                             if request_count_json=$(python3 \
                                 "$CF_WORKERS_FILE" -e "$cf_user_email_new" -p "$cf_user_pass_new" -o request_count
                             ) 
                             then
-                                break
+                                IFS=" " read -r success request_count api_token < <($JQ_FILE -r '[.success,.result.totals.requestCount,.api_token]|join(" ")' <<< "$request_count_json")
+
+                                if [ "$success" == "true" ] && [ -n "$request_count" ] 
+                                then
+                                    if [ "$request_count" -gt "$cf_workers_monitor_request_counts" ] 
+                                    then
+                                        emails_dead+=("$cf_user_email_new")
+                                        break
+                                    else
+                                        dead_email=0
+                                        break 2
+                                    fi
+                                else
+                                    MonitorError "request_count_json 2 : $request_count_json"
+                                    sleep 30
+                                fi
                             else
                                 sleep 10
                             fi
                         done
-
-                        IFS=" " read -r success request_count api_token < <($JQ_FILE -r '[.success,.result.totals.requestCount,.api_token]|join(" ")' <<< "$request_count_json")
-
-                        if [ "$success" == "true" ] && [ -n "$request_count" ] 
-                        then
-                            if [ "$request_count" -gt "$cf_workers_monitor_request_counts" ] 
-                            then
-                                emails_dead+=("$cf_user_email_new")
-                            else
-                                dead_email=0
-                                break
-                            fi
-                        else
-                            MonitorError "request_count_json 2 : $request_count_json"
-                        fi
                     done
                 else
                     for zone_index in "${zones_index_monitor[@]}"
@@ -24459,25 +24616,25 @@ MonitorCloudflareWorkers()
                             cf_user_token=${cf_zones_user_token[zone_index]}
                             MonitorCloudflareWorkersUpdateRoutes
                         else
-                            for((index=0;index<3;index++));
+                            for((index=0;index<20;index++));
                             do
                                 if cf_user_token=$(python3 \
                                     "$CF_WORKERS_FILE" -e "$cf_user_email" -p "$cf_user_pass" -o api_token
                                 ) 
                                 then
-                                    break
+                                    if [ -n "$cf_user_token" ] 
+                                    then
+                                        cf_zones_user_token[zone_index]=$cf_user_token
+                                        MonitorCloudflareWorkersUpdateRoutes
+                                        break
+                                    else
+                                        MonitorError "无法获取 $cf_zone_user_email Token"
+                                        sleep 30
+                                    fi
                                 else
                                     sleep 10
                                 fi
                             done
-
-                            if [ -n "$cf_user_token" ] 
-                            then
-                                cf_zones_user_token[zone_index]=$cf_user_token
-                                MonitorCloudflareWorkersUpdateRoutes
-                            else
-                                MonitorError "无法获取 $cf_zone_user_email Token"
-                            fi
                         fi
                     done
                 fi
@@ -30001,6 +30158,328 @@ fi
 if [[ -n ${1+x} ]]
 then
     case $1 in
+        "4g")
+            if [ ! -d "$IPTV_ROOT" ] 
+            then
+                Println "$error 请先安装脚本 !\n" && exit 1
+            fi
+
+            service_name="4gtv"
+            user_agent="Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"
+
+            if [ "${2:-}" == "-" ] 
+            then
+                _4gtvCron
+                exit 0
+            fi
+
+            if [[ ! -x $(command -v openssl) ]] 
+            then
+                Println "是否安装 openssl ? [Y/n]"
+                read -p "(默认: Y): " openssl_install_yn
+                openssl_install_yn=${openssl_install_yn:-Y}
+                if [[ $openssl_install_yn == [Yy] ]]
+                then
+                    InstallOpenssl
+                else
+                    Println "已取消\n..." && exit 1
+                fi
+            fi
+
+            Println "  4gtv 面板
+
+  ${green}1.${normal} 注册账号
+  ${green}2.${normal} 登录账号
+  ${green}3.${normal} 查看账号
+  ${green}4.${normal} 修改账号
+  ${green}5.${normal} 删除账号
+  ${green}6.${normal} 使用免费频道
+  ${green}7.${normal} 使用豪华频道
+  ${green}8.${normal} 开启计划任务
+  ${green}9.${normal} 关闭计划任务
+
+"
+            while read -p "(默认: 6): " _4gtv_menu_num 
+            do
+                _4gtv_menu_num=${_4gtv_menu_num:-6}
+                case "$_4gtv_menu_num" in
+                    1) 
+                        Reg4gtvAcc
+                        exit 0
+                    ;;
+                    2) 
+                        Login4gtvAcc
+                        exit 0
+                    ;;
+                    3) 
+                        View4gtvAcc
+                        exit 0
+                    ;;
+                    4) 
+                        Edit4gtvAcc
+                        exit 0
+                    ;;
+                    5) 
+                        Del4gtvAcc
+                        exit 0
+                    ;;
+                    6) 
+                        _4gtv_set_id=4
+                        fsVALUE=""
+                        break
+                    ;;
+                    7) 
+                        Get4gtvAccToken
+                        _4gtv_set_id=1
+                        break
+                    ;;
+                    8) 
+                        Enable4gtvCron
+                        exit 0
+                    ;;
+                    9) 
+                        Disable4gtvCron
+                        exit 0
+                    ;;
+                    *) Println "$error 请输入正确的数字 [1-9]\n"
+                    ;;
+                esac
+            done
+
+            hinet_4gtv=(
+                "litv-longturn14:寰宇新聞台"
+                "4gtv-4gtv052:華視新聞資訊台"
+                "4gtv-4gtv012:空中英語教室"
+                "litv-ftv07:民視旅遊台"
+                "litv-ftv15:i-Fun動漫台"
+                "4gtv-live206:幸福空間居家台"
+                "4gtv-4gtv070:愛爾達娛樂台"
+                "litv-longturn17:亞洲旅遊台"
+                "4gtv-4gtv025:MTV Live HD"
+                "litv-longturn15:寰宇新聞台灣台"
+                "4gtv-4gtv001:民視台灣台"
+                "4gtv-4gtv074:中視新聞台"
+                "4gtv-4gtv011:影迷數位電影台"
+                "4gtv-4gtv047:靖天日本台"
+                "litv-longturn11:龍華日韓台"
+                "litv-longturn12:龍華偶像台"
+                "4gtv-4gtv042:公視戲劇"
+                "litv-ftv12:i-Fun動漫台3"
+                "4gtv-4gtv002:民視無線台"
+                "4gtv-4gtv027:CI 罪案偵查頻道"
+                "4gtv-4gtv013:CNEX DOC CHANNEL"
+                "litv-longturn03:龍華電影台"
+                "4gtv-4gtv004:民視綜藝台"
+                "litv-longturn20:ELTV英語學習台"
+                "litv-longturn01:龍華卡通台"
+                "4gtv-4gtv040:中視無線台"
+                "litv-longturn02:Baby First"
+                "4gtv-4gtv003:民視第一台"
+                "4gtv-4gtv007:大愛電視台"
+                "4gtv-4gtv076:SMART 知識頻道"
+                "4gtv-4gtv030:CNBC"
+                "litv-ftv10:半島電視台"
+            )
+
+            hinet_4gtv_count=${#hinet_4gtv[@]}
+            hinet_4gtv_list=""
+            for((i=0;i<hinet_4gtv_count;i++));
+            do
+                hinet_4gtv_list="$hinet_4gtv_list $green$((i+1)).${normal}\r\033[6C${hinet_4gtv[i]#*:}\n\n"
+            done
+
+            #headers="Referer: $chnl_stream_link\r\n"
+
+            xc=1
+            cookies=""
+
+            Println "$info 获取频道 ..."
+            IFS="^" read -r _4gtv_chnl_id _4gtv_chnl_name _4gtv_chnl_aid < <(curl -s -Lm 10 \
+                -H "User-Agent: $user_agent" \
+                -H "Referer: https://www.4gtv.tv/channel.html?channelSet_id=$_4gtv_set_id" https://api2.4gtv.tv/Channel/GetChannelBySetId/$_4gtv_set_id/pc/L \
+                | $JQ_FILE -r '[([.Data[].fnID]|join("|")),([.Data[].fsNAME]|join("|")),([.Data[].fs4GTV_ID]|join("|"))]|join("^")'
+            ) || true
+
+            IFS="|" read -r -a _4gtv_chnls_id <<< "$_4gtv_chnl_id"
+            IFS="|" read -r -a _4gtv_chnls_name <<< "$_4gtv_chnl_name"
+            IFS="|" read -r -a _4gtv_chnls_aid <<< "$_4gtv_chnl_aid"
+
+            if [ -n "${_4gtv_chnls_id:-}" ] 
+            then
+                _4gtv_list=""
+                _4gtv_chnls_count=${#_4gtv_chnls_id[@]}
+                for((i=0;i<_4gtv_chnls_count;i++));
+                do
+                    _4gtv_list="$_4gtv_list $green$((i+hinet_4gtv_count+1)).${normal}\r\033[6C${_4gtv_chnls_name[i]}\n\n"
+                done
+                chnls_list="HiNet 4gtv 频道:\n\n${hinet_4gtv_list}4gtv 官网频道:\n\n$_4gtv_list"
+            else
+                _4gtv_chnls_count=0
+                chnls_list="HiNet 4gtv 频道:\n\n$hinet_4gtv_list"
+            fi
+
+            chnls_count=$((hinet_4gtv_count+_4gtv_chnls_count))
+            Println "$chnls_list"
+            echo -e "选择需要添加的频道序号, 多个频道用空格分隔, 比如 5 7 9-11"
+            while read -p "(默认: 取消): " chnls_num 
+            do
+                [ -z "$chnls_num" ] && Println "已取消...\n" && exit 1
+                IFS=" " read -ra chnls_num_arr <<< "$chnls_num"
+
+                error_no=0
+                for chnl_num in "${chnls_num_arr[@]}"
+                do
+                    case "$chnl_num" in
+                        *"-"*)
+                            chnl_num_start=${chnl_num%-*}
+                            chnl_num_end=${chnl_num#*-}
+                            if [[ $chnl_num_start == *[!0-9]* ]] || [[ $chnl_num_end == *[!0-9]* ]] || \
+                            [ "$chnl_num_start" -eq 0 ] || [ "$chnl_num_end" -eq 0 ] || \
+                            [ "$chnl_num_end" -gt "$chnls_count" ] || \
+                            [ "$chnl_num_start" -ge "$chnl_num_end" ]
+                            then
+                                error_no=3
+                            fi
+                        ;;
+                        *[!0-9]*)
+                            error_no=1
+                        ;;
+                        *)
+                            if [ "$chnl_num" -lt 1 ] || [ "$chnl_num" -gt "$chnls_count" ] 
+                            then
+                                error_no=2
+                            fi
+                        ;;
+                    esac
+                done
+
+                case "$error_no" in
+                    1|2|3)
+                        Println "$error 请输入正确的数字\n"
+                    ;;
+                    *)
+                        declare -a new_array
+                        for element in "${chnls_num_arr[@]}"
+                        do
+                            if [[ $element == *"-"* ]] 
+                            then
+                                start=${element%-*}
+                                end=${element#*-}
+                                for((i=start;i<=end;i++));
+                                do
+                                    new_array+=("$i")
+                                done
+                            else
+                                new_array+=("$element")
+                            fi
+                        done
+                        chnls_num_arr=("${new_array[@]}")
+                        unset new_array
+                        break
+                    ;;
+                esac
+            done
+
+            for chnl_num in "${chnls_num_arr[@]}"
+            do
+                if [ "$chnl_num" -le "$hinet_4gtv_count" ] 
+                then
+                    hinet_4gtv_chnl_index=$((chnl_num-1))
+                    hinet_4gtv_chnl_id=${hinet_4gtv[hinet_4gtv_chnl_index]%%:*}
+                    hinet_4gtv_chnl_name=${hinet_4gtv[hinet_4gtv_chnl_index]#*:}
+                    hinet_4gtv_chnl_name_enc=$(Urlencode "$hinet_4gtv_chnl_name")
+                    Println "$info 添加频道 [ $hinet_4gtv_chnl_name ]\n"
+                    Println "是否推流 flv ？[y/N]"
+                    read -p "(默认: N): " add_channel_flv_yn
+                    add_channel_flv_yn=${add_channel_flv_yn:-N}
+                    if [[ $add_channel_flv_yn == [Yy] ]] 
+                    then
+                        kind="flv"
+                    else
+                        kind=""
+                    fi
+                    Println "$info 解析 [ $hinet_4gtv_chnl_name ] 链接 ..."
+                    stream_links_input="https://embed.4gtv.tv/HiNet/$hinet_4gtv_chnl_name_enc.html"
+                    headers="Referer: $stream_links_input?ar=0&as=1&volume=0\r\n"
+                    stream_link_data=$(curl -s -Lm 10 \
+                        -H "User-Agent: $user_agent" \
+                        -H "${headers:0:-4}" "https://app.4gtv.tv/Data/HiNet/GetURL.ashx?ChannelNamecallback=channelname&Type=LIVE&Content=$hinet_4gtv_chnl_id&HostURL=https%3A%2F%2Fwww.hinet.net%2Ftv%2F&_=$(date +%s%3N)") || true
+                    if [ -n "$stream_link_data" ] 
+                    then
+                        stream_link_data=$($JQ_FILE -r '.VideoURL' <<< "${stream_link_data:12:-1}")
+                        hexkey=$(echo -n "VxzAfiseH0AbLShkQOPwdsssw5KyLeuv" | hexdump -v -e '/1 "%02x"')
+                        hexiv=$(echo -n "${stream_link_data:0:16}" | hexdump -v -e '/1 "%02x"')
+                        stream_link=$stream_links_input
+                        stream_links_url=$(echo "${stream_link_data:16}" | openssl enc -aes-256-cbc -d -iv "$hexiv" -K "$hexkey" -a)
+                        Add4gtvLink
+                    else
+                        Println "$error 无法连接 4gtv !\n" && exit 1
+                    fi
+                    AddChannel
+                else
+                    _4gtv_chnl_index=$((chnl_num-hinet_4gtv_count-1))
+                    _4gtv_chnl_id=${_4gtv_chnls_id[_4gtv_chnl_index]}
+                    _4gtv_chnl_name=${_4gtv_chnls_name[_4gtv_chnl_index]}
+                    _4gtv_chnl_aid=${_4gtv_chnls_aid[_4gtv_chnl_index]}
+                    Println "$info 添加频道 [ $_4gtv_chnl_name ]\n"
+                    Println "是否推流 flv ？[y/N]"
+                    read -p "(默认: N): " add_channel_flv_yn
+                    add_channel_flv_yn=${add_channel_flv_yn:-N}
+                    if [[ $add_channel_flv_yn == [Yy] ]] 
+                    then
+                        kind="flv"
+                    else
+                        kind=""
+                    fi
+                    Println "$info 解析 [ $_4gtv_chnl_name ] 链接 ..."
+                    stream_links_input="https://www.4gtv.tv/channel_sub.html?channelSet_id=$_4gtv_set_id&asset_id=$_4gtv_chnl_aid&channel_id=$_4gtv_chnl_id"
+                    headers="Referer: $stream_links_input\r\n"
+                    key="ilyB29ZdruuQjC45JhBBR7o2Z8WJ26Vg"
+                    iv="JUMxvVMmszqUTeKn"
+                    hexkey=$(echo -n $key | hexdump -v -e '/1 "%02x"')
+                    hexiv=$(echo -n $iv | hexdump -v -e '/1 "%02x"')
+                    post_data='{"fnCHANNEL_ID":'"$_4gtv_chnl_id"',"fsASSET_ID":"'"$_4gtv_chnl_aid"'","fsDEVICE_TYPE":"pc","clsIDENTITY_VALIDATE_ARUS":{"fsVALUE":"'"$fsVALUE"'"}}'
+                    post_data=$(echo -n "$post_data" | openssl enc -aes-256-cbc -iv "$hexiv" -K "$hexkey" -a)
+                    if [ -n "$fsVALUE" ] 
+                    then
+                        value="$(UrlencodeUpper ${post_data//[[:space:]]/})"
+                    else
+                        value="$(Urlencode ${post_data//[[:space:]]/})"
+                    fi
+
+                    for((try_i=0;try_i<10;try_i++));
+                    do
+                        stream_link_data=$(curl -s -Lm 10 -X POST \
+                            -H "User-Agent: $user_agent" \
+                            -H "${headers:0:-4}" \
+                            --data "value=$value" "https://api2.4gtv.tv/Channel/GetChannelUrl3") || true
+                        if [ -n "$stream_link_data" ] 
+                        then
+                            break
+                        fi
+                    done
+
+                    if [ -z "$stream_link_data" ] 
+                    then
+                        Println "$error 无法连接 4gtv !\n" && exit 1
+                    fi
+
+                    stream_link_data=$($JQ_FILE -r '.Data' <<< "$stream_link_data")
+                    if [ "$stream_link_data" == null ] 
+                    then
+                        Println "$error 此服务器 ip 不支持此频道!\n"
+                    else
+                        stream_link=$stream_links_input
+                        stream_links_url=$(echo "$stream_link_data" | openssl enc -aes-256-cbc -d -iv "$hexiv" -K "$hexkey" -a \
+                            | $JQ_FILE -r '.flstURLs[0]')
+                        Add4gtvLink
+                        AddChannel
+                    fi
+                fi
+            done
+
+            exit 0
+        ;;
         "s") 
             [ ! -e "$IPTV_ROOT" ] && Println "$error 尚未安装, 请先安装 !" && exit 1
             Schedule "$@"
@@ -30226,6 +30705,10 @@ case "$cmd" in
                     if [[ $line == *"git"* ]] 
                     then
                         git_version_new=$line
+                        if [ "$git_version_new" != "$git_version_old" ] || [ ! -e "$FFMPEG_MIRROR_ROOT/builds/ffmpeg-git-amd64-static.tar.xz" ]
+                        then
+                            git_download=1
+                        fi
                     else
                         release_version_new=$line
                         [ "$release_version_new" != "$release_version_old" ] && release_download=1
@@ -30241,7 +30724,7 @@ case "$cmd" in
                         build_file_name=${git_link##*/}
                         if [ "$git_version_new" != "$git_version_old" ] || [ ! -e "$FFMPEG_MIRROR_ROOT/builds/${build_file_name}" ]
                         then
-                            Println "$info 下载 ffmpeg git build ..."
+                            Println "$info 下载 $build_file_name ..."
                             if curl -s -L "$git_link" -o "$FFMPEG_MIRROR_ROOT/builds/${build_file_name}_tmp"
                             then
                                 mv "$FFMPEG_MIRROR_ROOT/builds/${build_file_name}_tmp" "$FFMPEG_MIRROR_ROOT/builds/${build_file_name}"
@@ -30257,7 +30740,7 @@ case "$cmd" in
                             release_file_name=${release_link##*/}
                             if [ "$release_version_new" != "$release_version_old" ] || [ ! -e "$FFMPEG_MIRROR_ROOT/releases/${release_file_name}" ]
                             then
-                                Println "$info 下载 ffmpeg release build ..."
+                                Println "$info 下载 $release_file_name ..."
                                 if curl -s -L "$release_link" -o "$FFMPEG_MIRROR_ROOT/releases/${release_file_name}_tmp"
                                 then
                                     mv "$FFMPEG_MIRROR_ROOT/releases/${release_file_name}_tmp" "$FFMPEG_MIRROR_ROOT/releases/${release_file_name}"
@@ -30551,312 +31034,6 @@ case "$cmd" in
         then
             Println "$error 没有开启的频道 !\n" && exit 1
         fi
-
-        exit 0
-    ;;
-    "4g")
-        if [ ! -d "$IPTV_ROOT" ] 
-        then
-            Println "$error 请先安装脚本 !\n" && exit 1
-        fi
-
-        if [[ ! -x $(command -v openssl) ]] 
-        then
-            Println "是否安装 openssl ? [Y/n]"
-            read -p "(默认: Y): " openssl_install_yn
-            openssl_install_yn=${openssl_install_yn:-Y}
-            if [[ $openssl_install_yn == [Yy] ]]
-            then
-                InstallOpenssl
-            else
-                Println "已取消\n..." && exit 1
-            fi
-        fi
-
-        service_name="4gtv"
-        user_agent="Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"
-
-        Println "  4gtv 面板
-
-  ${green}1.${normal} 注册账号
-  ${green}2.${normal} 登录账号
-  ${green}3.${normal} 查看账号
-  ${green}4.${normal} 修改账号
-  ${green}5.${normal} 删除账号
-  ${green}6.${normal} 使用免费频道
-  ${green}7.${normal} 使用豪华频道
-
-"
-        while read -p "(默认: 6): " _4gtv_menu_num 
-        do
-            _4gtv_menu_num=${_4gtv_menu_num:-6}
-            case "$_4gtv_menu_num" in
-                1) 
-                    Reg4gtvAcc
-                    exit 0
-                ;;
-                2) 
-                    Login4gtvAcc
-                    exit 0
-                ;;
-                3) 
-                    View4gtvAcc
-                    exit 0
-                ;;
-                4) 
-                    Edit4gtvAcc
-                    exit 0
-                ;;
-                5) 
-                    Del4gtvAcc
-                    exit 0
-                ;;
-                6) 
-                    _4gtv_set_id=4
-                    fsVALUE=""
-                    break
-                ;;
-                7) 
-                    Get4gtvAccToken
-                    _4gtv_set_id=1
-                    break
-                ;;
-                *) Println "$error 请输入正确的数字 [1-7]\n"
-                ;;
-            esac
-        done
-
-        hinet_4gtv=(
-            "litv-longturn14:寰宇新聞台"
-            "4gtv-4gtv052:華視新聞資訊台"
-            "4gtv-4gtv012:空中英語教室"
-            "litv-ftv07:民視旅遊台"
-            "litv-ftv15:i-Fun動漫台"
-            "4gtv-live206:幸福空間居家台"
-            "4gtv-4gtv070:愛爾達娛樂台"
-            "litv-longturn17:亞洲旅遊台"
-            "4gtv-4gtv025:MTV Live HD"
-            "litv-longturn15:寰宇新聞台灣台"
-            "4gtv-4gtv001:民視台灣台"
-            "4gtv-4gtv074:中視新聞台"
-            "4gtv-4gtv011:影迷數位電影台"
-            "4gtv-4gtv047:靖天日本台"
-            "litv-longturn11:龍華日韓台"
-            "litv-longturn12:龍華偶像台"
-            "4gtv-4gtv042:公視戲劇"
-            "litv-ftv12:i-Fun動漫台3"
-            "4gtv-4gtv002:民視無線台"
-            "4gtv-4gtv027:CI 罪案偵查頻道"
-            "4gtv-4gtv013:CNEX DOC CHANNEL"
-            "litv-longturn03:龍華電影台"
-            "4gtv-4gtv004:民視綜藝台"
-            "litv-longturn20:ELTV英語學習台"
-            "litv-longturn01:龍華卡通台"
-            "4gtv-4gtv040:中視無線台"
-            "litv-longturn02:Baby First"
-            "4gtv-4gtv003:民視第一台"
-            "4gtv-4gtv007:大愛電視台"
-            "4gtv-4gtv076:SMART 知識頻道"
-            "4gtv-4gtv030:CNBC"
-            "litv-ftv10:半島電視台"
-        )
-
-        hinet_4gtv_count=${#hinet_4gtv[@]}
-        hinet_4gtv_list=""
-        for((i=0;i<hinet_4gtv_count;i++));
-        do
-            hinet_4gtv_list="$hinet_4gtv_list $green$((i+1)).${normal}\r\033[6C${hinet_4gtv[i]#*:}\n\n"
-        done
-
-        #headers="Referer: $chnl_stream_link\r\n"
-
-        xc=1
-        cookies=""
-
-        Println "$info 获取频道 ..."
-        IFS="^" read -r _4gtv_chnl_id _4gtv_chnl_name _4gtv_chnl_aid < <(curl -s -Lm 10 \
-            -H "User-Agent: $user_agent" \
-            -H "Referer: https://www.4gtv.tv/channel.html?channelSet_id=$_4gtv_set_id" https://api2.4gtv.tv/Channel/GetChannelBySetId/$_4gtv_set_id/pc/L \
-            | $JQ_FILE -r '[([.Data[].fnID]|join("|")),([.Data[].fsNAME]|join("|")),([.Data[].fs4GTV_ID]|join("|"))]|join("^")'
-        ) || true
-
-        IFS="|" read -r -a _4gtv_chnls_id <<< "$_4gtv_chnl_id"
-        IFS="|" read -r -a _4gtv_chnls_name <<< "$_4gtv_chnl_name"
-        IFS="|" read -r -a _4gtv_chnls_aid <<< "$_4gtv_chnl_aid"
-
-        if [ -n "${_4gtv_chnls_id:-}" ] 
-        then
-            _4gtv_list=""
-            _4gtv_chnls_count=${#_4gtv_chnls_id[@]}
-            for((i=0;i<_4gtv_chnls_count;i++));
-            do
-                _4gtv_list="$_4gtv_list $green$((i+hinet_4gtv_count+1)).${normal}\r\033[6C${_4gtv_chnls_name[i]}\n\n"
-            done
-            chnls_list="HiNet 4gtv 频道:\n\n${hinet_4gtv_list}4gtv 官网频道:\n\n$_4gtv_list"
-        else
-            _4gtv_chnls_count=0
-            chnls_list="HiNet 4gtv 频道:\n\n$hinet_4gtv_list"
-        fi
-
-        chnls_count=$((hinet_4gtv_count+_4gtv_chnls_count))
-        Println "$chnls_list"
-        echo -e "选择需要添加的频道序号, 多个频道用空格分隔, 比如 5 7 9-11"
-        while read -p "(默认: 取消): " chnls_num 
-        do
-            [ -z "$chnls_num" ] && Println "已取消...\n" && exit 1
-            IFS=" " read -ra chnls_num_arr <<< "$chnls_num"
-
-            error_no=0
-            for chnl_num in "${chnls_num_arr[@]}"
-            do
-                case "$chnl_num" in
-                    *"-"*)
-                        chnl_num_start=${chnl_num%-*}
-                        chnl_num_end=${chnl_num#*-}
-                        if [[ $chnl_num_start == *[!0-9]* ]] || [[ $chnl_num_end == *[!0-9]* ]] || \
-                        [ "$chnl_num_start" -eq 0 ] || [ "$chnl_num_end" -eq 0 ] || \
-                        [ "$chnl_num_end" -gt "$chnls_count" ] || \
-                        [ "$chnl_num_start" -ge "$chnl_num_end" ]
-                        then
-                            error_no=3
-                        fi
-                    ;;
-                    *[!0-9]*)
-                        error_no=1
-                    ;;
-                    *)
-                        if [ "$chnl_num" -lt 1 ] || [ "$chnl_num" -gt "$chnls_count" ] 
-                        then
-                            error_no=2
-                        fi
-                    ;;
-                esac
-            done
-
-            case "$error_no" in
-                1|2|3)
-                    Println "$error 请输入正确的数字\n"
-                ;;
-                *)
-                    declare -a new_array
-                    for element in "${chnls_num_arr[@]}"
-                    do
-                        if [[ $element == *"-"* ]] 
-                        then
-                            start=${element%-*}
-                            end=${element#*-}
-                            for((i=start;i<=end;i++));
-                            do
-                                new_array+=("$i")
-                            done
-                        else
-                            new_array+=("$element")
-                        fi
-                    done
-                    chnls_num_arr=("${new_array[@]}")
-                    unset new_array
-                    break
-                ;;
-            esac
-        done
-
-        for chnl_num in "${chnls_num_arr[@]}"
-        do
-            if [ "$chnl_num" -le "$hinet_4gtv_count" ] 
-            then
-                hinet_4gtv_chnl_index=$((chnl_num-1))
-                hinet_4gtv_chnl_id=${hinet_4gtv[hinet_4gtv_chnl_index]%%:*}
-                hinet_4gtv_chnl_name=${hinet_4gtv[hinet_4gtv_chnl_index]#*:}
-                hinet_4gtv_chnl_name_enc=$(Urlencode "$hinet_4gtv_chnl_name")
-                Println "$info 添加频道 [ $hinet_4gtv_chnl_name ]\n"
-                Println "是否推流 flv ？[y/N]"
-                read -p "(默认: N): " add_channel_flv_yn
-                add_channel_flv_yn=${add_channel_flv_yn:-N}
-                if [[ $add_channel_flv_yn == [Yy] ]] 
-                then
-                    kind="flv"
-                else
-                    kind=""
-                fi
-                Println "$info 解析 [ $hinet_4gtv_chnl_name ] 链接 ..."
-                stream_links_input="https://embed.4gtv.tv/HiNet/$hinet_4gtv_chnl_name_enc.html"
-                headers="Referer: $stream_links_input?ar=0&as=1&volume=0\r\n"
-                stream_link_data=$(curl -s -Lm 10 \
-                    -H "User-Agent: $user_agent" \
-                    -H "${headers:0:-4}" "https://app.4gtv.tv/Data/HiNet/GetURL.ashx?ChannelNamecallback=channelname&Type=LIVE&Content=$hinet_4gtv_chnl_id&HostURL=https%3A%2F%2Fwww.hinet.net%2Ftv%2F&_=$(date +%s%3N)") || true
-                if [ -n "$stream_link_data" ] 
-                then
-                    stream_link_data=$($JQ_FILE -r '.VideoURL' <<< "${stream_link_data:12:-1}")
-                    hexkey=$(echo -n "VxzAfiseH0AbLShkQOPwdsssw5KyLeuv" | hexdump -v -e '/1 "%02x"')
-                    hexiv=$(echo -n "${stream_link_data:0:16}" | hexdump -v -e '/1 "%02x"')
-                    stream_link=$stream_links_input
-                    stream_links_url=$(echo "${stream_link_data:16}" | openssl enc -aes-256-cbc -d -iv "$hexiv" -K "$hexkey" -a)
-                    Add4gtvLink
-                else
-                    Println "$error 无法连接 4gtv !\n" && exit 1
-                fi
-                AddChannel
-            else
-                _4gtv_chnl_index=$((chnl_num-hinet_4gtv_count-1))
-                _4gtv_chnl_id=${_4gtv_chnls_id[_4gtv_chnl_index]}
-                _4gtv_chnl_name=${_4gtv_chnls_name[_4gtv_chnl_index]}
-                _4gtv_chnl_aid=${_4gtv_chnls_aid[_4gtv_chnl_index]}
-                Println "$info 添加频道 [ $_4gtv_chnl_name ]\n"
-                Println "是否推流 flv ？[y/N]"
-                read -p "(默认: N): " add_channel_flv_yn
-                add_channel_flv_yn=${add_channel_flv_yn:-N}
-                if [[ $add_channel_flv_yn == [Yy] ]] 
-                then
-                    kind="flv"
-                else
-                    kind=""
-                fi
-                Println "$info 解析 [ $_4gtv_chnl_name ] 链接 ..."
-                stream_links_input="https://www.4gtv.tv/channel_sub.html?channelSet_id=$_4gtv_set_id&asset_id=$_4gtv_chnl_aid&channel_id=$_4gtv_chnl_id"
-                headers="Referer: $stream_links_input\r\n"
-                key="ilyB29ZdruuQjC45JhBBR7o2Z8WJ26Vg"
-                iv="JUMxvVMmszqUTeKn"
-                hexkey=$(echo -n $key | hexdump -v -e '/1 "%02x"')
-                hexiv=$(echo -n $iv | hexdump -v -e '/1 "%02x"')
-                post_data='{"fnCHANNEL_ID":'"$_4gtv_chnl_id"',"fsASSET_ID":"'"$_4gtv_chnl_aid"'","fsDEVICE_TYPE":"pc","clsIDENTITY_VALIDATE_ARUS":{"fsVALUE":"'"$fsVALUE"'"}}'
-                post_data=$(echo -n "$post_data" | openssl enc -aes-256-cbc -iv "$hexiv" -K "$hexkey" -a)
-                if [ -n "$fsVALUE" ] 
-                then
-                    value="$(UrlencodeUpper ${post_data//[[:space:]]/})"
-                else
-                    value="$(Urlencode ${post_data//[[:space:]]/})"
-                fi
-
-                for((try_i=0;try_i<10;try_i++));
-                do
-                    stream_link_data=$(curl -s -Lm 10 -X POST \
-                        -H "User-Agent: $user_agent" \
-                        -H "${headers:0:-4}" \
-                        --data "value=$value" "https://api2.4gtv.tv/Channel/GetChannelUrl3") || true
-                    if [ -n "$stream_link_data" ] 
-                    then
-                        break
-                    fi
-                done
-
-                if [ -z "$stream_link_data" ] 
-                then
-                    Println "$error 无法连接 4gtv !\n" && exit 1
-                fi
-
-                stream_link_data=$($JQ_FILE -r '.Data' <<< "$stream_link_data")
-                if [ "$stream_link_data" == null ] 
-                then
-                    Println "$error 此服务器 ip 不支持此频道!\n"
-                else
-                    stream_link=$stream_links_input
-                    stream_links_url=$(echo "$stream_link_data" | openssl enc -aes-256-cbc -d -iv "$hexiv" -K "$hexkey" -a \
-                        | $JQ_FILE -r '.flstURLs[0]')
-                    Add4gtvLink
-                    AddChannel
-                fi
-            fi
-        done
 
         exit 0
     ;;
